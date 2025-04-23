@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/prerana99/django-todo.git', branch: 'main'
+                git url: 'https://github.com/prerana99/django-todo.git', branch: 'develop'
             }
         }
         stage('Set Up Virtual Environment') {
