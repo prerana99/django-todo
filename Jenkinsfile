@@ -4,7 +4,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // GitHub repo clone karo
-                git url: 'git@github.com:prerana99/django-todo.git', branch: 'main'
+                git url: 'git@github.com:prerana99/django-todo.git', branch: 'develop'
             }
         }
         stage('Build') {
