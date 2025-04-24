@@ -3,16 +3,27 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/prerana99/django-todo.git', branch: 'develop', credentialsId: 'github-cred'
+                git url: 'https://github.com/prerana99/django-todo.git', branch: 'main', credentialsId: 'github-cred'
+            }
+        }
+        stage('Setup Virtual Environment') {
+            steps {
+                sh '''
+                #!/bin/bash
+                python3 -m venv venv
+                chmod -R 755 venv
+                . venv/bin/activate
+                which pip
+                pip --version
+                '''
             }
         }
         stage('Install Dependencies') {
             steps {
                 sh '''
                 #!/bin/bash
-                python3 -m venv venv
                 . venv/bin/activate
-                pip install -r requirements.txt
+                pip install --no-cache-dir -r requirements.txt
                 pip install gunicorn
                 '''
             }
@@ -49,7 +60,7 @@ pipeline {
             steps {
                 sh '''
                 #!/bin/bash
-                curl -f http://44.223.48.19:8000/todos || exit 1
+                curl -f http://44.223.48.19/todos || exit 1
                 '''
             }
         }
@@ -65,7 +76,7 @@ pipeline {
             echo 'Deployment failed!'
         }
         success {
-            echo 'Deployment successful! App running at http://44.223.48.19:8000/todos'
+            echo 'Deployment successful! App running at http://44.223.48.19/todos'
         }
     }
 }
