@@ -3,13 +3,16 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                // GitHub repo clone karo
                 git url: 'git@github.com:prerana99/django-todo.git', branch: 'main'
             }
         }
         stage('Build') {
             steps {
+                // Virtualenv activate aur dependencies setup
                 sh '''
                 source /home/ubuntu/django-todo/venv/bin/activate
+                pip install -r requirements.txt
                 python manage.py makemigrations
                 python manage.py migrate
                 python manage.py collectstatic --noinput
@@ -18,6 +21,7 @@ pipeline {
         }
         stage('Test') {
             steps {
+                // Django tests run karo
                 sh '''
                 source /home/ubuntu/django-todo/venv/bin/activate
                 python manage.py test
@@ -26,16 +30,18 @@ pipeline {
         }
         stage('Deploy') {
             steps {
+                // Gunicorn start karo port 8000 pe
                 sh '''
                 source /home/ubuntu/django-todo/venv/bin/activate
-                pkill -f gunicorn || true  # Stop any running Gunicorn instance
+                pkill -f gunicorn || true  # Agar pehle se chal raha ho toh band karo
                 gunicorn --workers 3 --bind 0.0.0.0:8000 todoApp.wsgi:application &
-                sleep 5  # Wait for server to start
+                sleep 5  # Server start hone ka wait
                 '''
             }
         }
         stage('Verify Deployment') {
             steps {
+                // Deployment check karo
                 sh '''
                 echo "Checking deployment at http://44.223.48.19:8000/todos"
                 curl -f http://44.223.48.19:8000/todos || exit 1
@@ -46,13 +52,13 @@ pipeline {
     }
     post {
         always {
-            sh 'deactivate || true'  // Deactivate virtualenv if active
+            sh 'deactivate || true'  // Virtualenv deactivate
         }
         failure {
-            echo 'Deployment failed! Check logs.'
+            echo 'Pipeline failed! Check logs.'
         }
         success {
-            echo 'Deployment successful! App running at http://44.223.48.19:8000/todos'
+            echo 'Pipeline successful! App running at http://44.223.48.19:8000/todos'
         }
     }
 }
