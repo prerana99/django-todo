@@ -3,62 +3,69 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // GitHub repo clone karo
-                git url: 'git@github.com:prerana99/django-todo.git', branch: 'develop'
+                git url: 'https://github.com/prerana99/django-todo.git', branch: 'develop', credentialsId: 'github-cred'
             }
         }
-        stage('Build') {
+        stage('Install Dependencies') {
             steps {
-                // Virtualenv activate aur dependencies setup
                 sh '''
-                source /home/ubuntu/django-todo/venv/bin/activate
+                #!/bin/bash
+                python3 -m venv venv
+                . venv/bin/activate
                 pip install -r requirements.txt
+                pip install gunicorn
+                '''
+            }
+        }
+        stage('Run Migrations') {
+            steps {
+                sh '''
+                #!/bin/bash
+                . venv/bin/activate
                 python manage.py makemigrations
                 python manage.py migrate
+                '''
+            }
+        }
+        stage('Collect Static Files') {
+            steps {
+                sh '''
+                #!/bin/bash
+                . venv/bin/activate
                 python manage.py collectstatic --noinput
                 '''
             }
         }
-        stage('Test') {
+        stage('Deploy with Gunicorn') {
             steps {
-                // Django tests run karo
                 sh '''
-                source /home/ubuntu/django-todo/venv/bin/activate
-                python manage.py test
-                '''
-            }
-        }
-        stage('Deploy') {
-            steps {
-                // Gunicorn start karo port 8000 pe
-                sh '''
-                source /home/ubuntu/django-todo/venv/bin/activate
-                pkill -f gunicorn || true  # Agar pehle se chal raha ho toh band karo
-                gunicorn --workers 3 --bind 0.0.0.0:8000 todoApp.wsgi:application &
-                sleep 5  # Server start hone ka wait
+                #!/bin/bash
+                sudo systemctl restart gunicorn
+                sudo systemctl restart nginx
                 '''
             }
         }
         stage('Verify Deployment') {
             steps {
-                // Deployment check karo
                 sh '''
-                echo "Checking deployment at http://44.223.48.19:8000/todos"
+                #!/bin/bash
                 curl -f http://44.223.48.19:8000/todos || exit 1
-                echo "Deployment check passed"
                 '''
             }
         }
     }
     post {
         always {
-            sh 'deactivate || true'  // Virtualenv deactivate
+            sh '''
+            #!/bin/bash
+            deactivate || true
+            '''
         }
         failure {
-            echo 'Pipeline failed! Check logs.'
+            echo 'Deployment failed!'
         }
         success {
-            echo 'Pipeline successful! App running at http://44.223.48.19:8000/todos'
+            echo 'Deployment successful! App running at http://44.223.48.19:8000/todos'
         }
     }
 }
