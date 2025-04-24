@@ -3,61 +3,56 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/prerana99/django-todo.git', branch: 'develop', credentialsId: 'github-cred'
+                git url: 'git@github.com:prerana99/django-todo.git', branch: 'main'
             }
         }
-        stage('Install Dependencies') {
+        stage('Build') {
             steps {
                 sh '''
-                python3 -m venv venv
-                source venv/bin/activate
-                pip install -r requirements.txt
-                pip install gunicorn
-                '''
-            }
-        }
-        stage('Run Migrations') {
-            steps {
-                sh '''
-                source venv/bin/activate
+                source /home/ubuntu/django-todo/venv/bin/activate
                 python manage.py makemigrations
                 python manage.py migrate
-                '''
-            }
-        }
-        stage('Collect Static Files') {
-            steps {
-                sh '''
-                source venv/bin/activate
                 python manage.py collectstatic --noinput
                 '''
             }
         }
-        stage('Deploy with Gunicorn') {
+        stage('Test') {
             steps {
                 sh '''
-                sudo systemctl restart gunicorn
-                sudo systemctl restart nginx
+                source /home/ubuntu/django-todo/venv/bin/activate
+                python manage.py test
+                '''
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh '''
+                source /home/ubuntu/django-todo/venv/bin/activate
+                pkill -f gunicorn || true  # Stop any running Gunicorn instance
+                gunicorn --workers 3 --bind 0.0.0.0:8000 todoApp.wsgi:application &
+                sleep 5  # Wait for server to start
                 '''
             }
         }
         stage('Verify Deployment') {
             steps {
                 sh '''
-                curl -f http://44.223.48.19/todos || exit 1
+                echo "Checking deployment at http://44.223.48.19:8000/todos"
+                curl -f http://44.223.48.19:8000/todos || exit 1
+                echo "Deployment check passed"
                 '''
             }
         }
     }
     post {
         always {
-            sh 'deactivate || true'
+            sh 'deactivate || true'  // Deactivate virtualenv if active
         }
         failure {
-            echo 'Deployment failed!'
+            echo 'Deployment failed! Check logs.'
         }
         success {
-            echo 'Deployment successful! App running at http://44.223.48.19/todos'
+            echo 'Deployment successful! App running at http://44.223.48.19:8000/todos'
         }
     }
 }
